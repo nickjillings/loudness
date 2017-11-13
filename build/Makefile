@@ -8,7 +8,7 @@ BASENAME=lib$(NAME).so
 EXECUTABLE=$(BASENAME).$(MAJOR).$(MINOR).$(REVISION)
 TARGET_DIR=/usr/local
 
-CFLAGS = -I/usr/local/include -std=c++11 -c -fPIC -g -Wall -O3
+CFLAGS = -I/usr/local/include -std=c++11 -c -fPIC -g -Wall -O3 -mfpmath=387 -msse -msse2 -msse3 -mssse3 -m64
 
 #Debug mode or not
 ifeq ($(DEBUG),1)
