@@ -21,6 +21,9 @@
 #define FIR_H
 
 #include "../support/Filter.h"
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <cufft.h>
 
 
 namespace loudness{
@@ -51,6 +54,12 @@ namespace loudness{
         virtual void processInternal(const SignalBank &input);
         virtual void processInternal(){};
         virtual void resetInternal();
+		unsigned int num_streams;
+		unsigned int bCoefs_pad_order;
+		double* copy_buffer;
+		cuDoubleComplex *hs;
+		cuDoubleComplex *inputs;
+		cufftHandle FFT;
     };
 }
 

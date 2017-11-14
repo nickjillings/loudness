@@ -29,7 +29,12 @@ namespace loudness{
         setBCoefs(bCoefs);
     }
 
-    FIR::~FIR() {}
+    FIR::~FIR() {
+		cudaFree(inputs);
+		cudaFree(hs);
+		cufftDestroy(FFT);
+		free(copy_buffer);
+	}
 
     bool FIR::initializeInternal(const SignalBank &input)
     {
@@ -39,6 +44,53 @@ namespace loudness{
         order_ = (int)bCoefs_.size() - 1;
         orderMinus1_ = order_ - 1;
         LOUDNESS_DEBUG("FIR: Filter order is: " << order_);
+		// Prepare GPU
+		// Padd the bCoefs to a power-of-2 and zero-pad x2
+		unsigned int K = floor(log2(order_ + 1));
+		if (1 << K < order_) {
+			K++;
+		}
+		bCoefs_pad_order = 1 << (K + 1);
+		double* bCoefs_mem = (double*)malloc(sizeof(double) * bCoefs_pad_order * 2);
+		memset(bCoefs_mem, 0x0, sizeof(double) * bCoefs_pad_order * 2);
+		for (int n = 0; n < order_; n++)
+		{
+			bCoefs_mem[n * 2] = bCoefs_[n];
+		}
+		// Create space on-card for the impulses (hs);
+		size_t hs_size = sizeof(cuDoubleComplex)*bCoefs_pad_order;
+		num_streams = input.getNSources()*input.getNEars()*input.getNChannels();
+		cudaMalloc(&hs, hs_size*num_streams);
+
+		// Create a use-once pair of memory for the first impulse transforms!
+		double *h_in, *h_out;
+		cudaMalloc(&h_in, sizeof(cuDoubleComplex)*bCoefs_pad_order);
+		cudaMalloc(&h_out, sizeof(cuDoubleComplex)*bCoefs_pad_order);
+		// Copy the strided memory pattern into h_in
+		cudaMemcpy(&h_in, bCoefs_mem, sizeof(cuDoubleComplex)*bCoefs_pad_order, cudaMemcpyHostToDevice);
+		// Plan and execute the FFT
+		cufftResult hs_FFT;
+		cufftPlan1d(&hs_FFT, bCoefs_pad_order, CUFFT_Z2Z, 1);
+		cufftExecZ2Z(hs_FFT, h_in, h_out, CUFFT_FORWARD);
+
+		// Copy the data from h_out into the number of stream pairs
+		for (int n = 0; n < num_streams; n++)
+		{
+			cudaMemcpy(&hs[n*bCoefs_pad_order], &h_out, hs_size, cudaMemcpyDeviceToDevice);
+		}
+
+		// Tidy up
+		cudaFree(h_in);
+		cudaFree(h_out);
+		cufftDestroy(hs_FFT);
+		copy_buffer = bCoefs_mem;
+		memset(copy_buffer, 0x0, sizeof(double)*bCoefs_pad_order * 2);
+
+		// Now allocate all the remaining buffers
+		cudaMalloc(&inputs, hs_size*num_streams);
+
+		// Plan the FFTs
+		cufftPlan1d(&FFT, bCoefs_pad_order, CUFFT_Z2Z, num_streams);
 
         //internal delay line - single vector for all ears
         delayLine_.initialize (input.getNSources(),
@@ -51,40 +103,6 @@ namespace loudness{
         output_.initialize (input);
 
         return 1;
-    }
-
-    void FIR::processInternal(const SignalBank &input)
-    {
-        for (int src = 0; src < input.getNSources(); ++src)
-        {
-            for(int ear = 0; ear < input.getNEars(); ++ear)
-            {
-                for (int chn = 0; chn < input.getNChannels(); ++chn)
-                {
-                    const Real* inputSignal = input.getSignalReadPointer
-                                                    (src, ear, chn);
-                    Real* outputSignal = output_.getSignalWritePointer
-                                                 (src, ear, chn);
-                    Real* z = delayLine_.getSignalWritePointer
-                                         (src, ear, chn);
-
-                    for (int smp = 0; smp < input.getNSamples(); ++smp)
-                    {
-                        Real x = inputSignal[smp];
-
-                        //output sample
-                        outputSignal[smp] = bCoefs_[0] * x + z[0];
-
-                        //fill delay
-                        for (int j = 1; j < order_; ++j)
-                            z[j-1] = bCoefs_[j] * x + z[j];
-
-                        //final sample
-                        z[orderMinus1_] = bCoefs_[order_] * x;
-                    }
-                }
-            }
-        }
     }
 
     void FIR::resetInternal()

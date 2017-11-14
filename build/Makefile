@@ -1,5 +1,6 @@
 NAME=loudness
 CC=g++
+CU=nvcc
 
 MAJOR=0
 MINOR=1
@@ -9,6 +10,7 @@ EXECUTABLE=$(BASENAME).$(MAJOR).$(MINOR).$(REVISION)
 TARGET_DIR=/usr/local
 
 CFLAGS = -I/usr/local/include -std=c++11 -c -fPIC -g -Wall -O3 -mfpmath=387 -msse -msse2 -msse3 -mssse3 -m64
+CUFLAGS = -c -arch=sm_50
 
 #Debug mode or not
 ifeq ($(DEBUG),1)
@@ -65,7 +67,10 @@ SOURCES=../src/thirdParty/cnpy/cnpy.cpp \
 ../src/models/DynamicLoudnessGM2002.cpp \
 ../src/models/DynamicLoudnessCH2012.cpp \
 
+CUSOURCES=../src/modules/FIR.cu \
+
 OBJECTS=$(SOURCES:.cpp=.o)
+CUOBJECTS = $(CUSOURCES:.cu=.o)
 
 all: $(SOURCES) $(EXECUTABLE)
 
@@ -75,6 +80,9 @@ $(EXECUTABLE): $(OBJECTS)
 .cpp.o:
 	@echo "Compiling: " $<
 	@$(CC) $(CFLAGS) $(INCS) $< -o $@
+.cu.o:
+	@echo "NVCC Compiling: " $<
+	@S(CU) &(CUFLAGS) $(INCS) $< -o $@
 
 clean:
 	@rm -rf $(OBJECTS) $(EXECUTABLE)
