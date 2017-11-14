@@ -3,12 +3,16 @@
 Loudness is a C++ library with Python bindings for modelling perceived loudness. 
 The library consists of processing modules which can be cascaded to form a loudness model.
 
+This is an extension of the original library by Dominic Ward and can be found at [https://github.com/deeuu/loudness/issues](https://github.com/deeuu/loudness/issues).
+This project aims to further accelerate the library using CUDA
+
 ## Dependencies
 
 To build the C++ library you will need:
   - libsndfile1-dev >= 1.0.25
   - libfftw3-dev >= 3.3.3
   - zlib1g-dev >= 1.2.8
+  - nvidia CUDA SDK >= 7.0
 
 To build the Python bindings you will need:
   - swig >= 3.0.0
@@ -19,6 +23,8 @@ To build the Python bindings you will need:
 This project is still in heavy development so is not stable. I am also now only
 supporting Python 3.5+. Please register an issue at:
 [https://github.com/deeuu/loudness/issues](https://github.com/deeuu/loudness/issues)
+
+If you have CUDA issues, raise them at [https://github.com/nickjillings/loudness/issues](https://github.com/nickjillings/loudness/issues)
 
 ## Acknowledgments 
 
