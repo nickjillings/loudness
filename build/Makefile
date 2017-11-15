@@ -67,7 +67,7 @@ SOURCES=../src/thirdParty/cnpy/cnpy.cpp \
 ../src/models/DynamicLoudnessGM2002.cpp \
 ../src/models/DynamicLoudnessCH2012.cpp \
 
-CUSOURCES=../src/modules/FIR.cu \
+CUSOURCES=../src/modules/FIRKern.cu \
 
 OBJECTS=$(SOURCES:.cpp=.o)
 CUOBJECTS = $(CUSOURCES:.cu=.o)
