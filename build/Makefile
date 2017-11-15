@@ -17,8 +17,8 @@ ifeq ($(DEBUG),1)
     CFLAGS += -DDEBUG
 endif
 
-LDFLAGS=-shared -L/usr/local/lib -L/usr/local/include
-LIBS=-lfftw3 -lsndfile #-lrt
+LDFLAGS=-shared -L/usr/local/lib -L/usr/local/include -L/usr/local/cuda/include
+LIBS=-lfftw3 -lsndfile -lcudart -lcufft #-lrt
 INCS=-I.
 
 SOURCES=../src/thirdParty/cnpy/cnpy.cpp \
