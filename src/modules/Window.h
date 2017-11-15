@@ -21,6 +21,11 @@
 #define Window_H
 
 #include "../support/Module.h"
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <math_constants.h>
+#include <device_launch_parameters.h>
+#include <device_functions.h>
 
 namespace loudness{
 
@@ -108,6 +113,10 @@ namespace loudness{
         virtual void processInternal(){};
         virtual void resetInternal();
 
+		void Window::processOneChannelMultiWindow(const SignalBack &input);
+		void Window::processMultiChannelOneWindow(const SignalBack &input);
+
+
         //window functions
         void hann(RealVec &window, bool periodic);
 
@@ -120,6 +129,17 @@ namespace loudness{
         RealVecVec window_;
         IntVec windowOffset_;
         METHOD method_;
+
+		double* device_window_;
+		double* device_input;
+		double* device_output;
+		double* input_buffer;
+		double* output_buffer;
+		size_t transferInputSize;
+		size_t transferOutputSize;
+		unsigned int winTotalElements;
+		unsigned int numCUDAStreams;
+		cudaStream_t* cudaStreams;
     };
 }
 

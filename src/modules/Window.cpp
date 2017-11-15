@@ -47,6 +47,11 @@ namespace loudness{
     
     Window::~Window()
     {
+		cudaFree(device_window_);
+		cudaFree(device_input);
+		cudaFree(device_output);
+		cudaFreeHost(input_buffer);
+		cudaFreeHost(output_buffer);
     }
    
     bool Window::initializeInternal(const SignalBank &input)
@@ -96,11 +101,13 @@ namespace loudness{
         }
         
         //generate the normalised window functions
+		unsigned int winTotalElements = 0;
         for (int w = 0; w < nWindows_; w++)
         {
             window_[w].assign(length_[w],0.0);
             generateWindow(window_[w], windowType_, periodic_);
             normaliseWindow(window_[w], normalisation_);
+			winTotalElements += length_[w];
             LOUDNESS_DEBUG(name_ << ": Length of window " << w << " = " << window_[w].size());
         }
 
@@ -112,6 +119,37 @@ namespace loudness{
                            input.getFs());
         output_.setFrameRate(input.getFrameRate());
 
+		// Prepare the CUDA cards
+		size_t window_size = sizeof(double)*winTotalElements;
+		cudaMalloc(&device_window_, window_size);
+		unsigned int numInputStreams, numOutputStreams;
+		switch (method_)
+		{
+			case ONE_CHANNEL_MULTI_WINDOW:
+			{
+				numInputStreams = 1;
+				numOutputStreams = nWindows_;
+				break;
+			}
+			case MULTI_CHANNEL_ONE_WINDOW:
+			{
+				numInputStreams = input.getNChannels();
+				numOutputStreams = output_.getNChannels();
+			}
+
+		}
+		numCUDAStreams = input.getNSources()*input.getNEars();
+		transferInputSize = numInputStreams*input.getNSamples();
+		transferOutputSize = numOutputStreams*input.getNSamples()
+		cudaMalloc(&device_input, sizeof(double)*transferInputSize*numCUDAStreams);
+		cudaMalloc(&device_output, sizeof(double)*transferOutputSize*numCUDAStreams);
+		cudaMallocHost(&input_buffer, sizeof(double)*transferInputSize*numCUDAStreams);
+		cudaMallocHost(&output_buffer, sizeof(double)*transferOutputSize*numCUDAStreams);
+		cudaStreams = new cudaStream_t[numCUDAStreams];
+		for (int n = 0; n < numCUDAStreams; n++)
+		{
+			cudaStreamCreate(&cudaStreams[n]);
+		}
         return 1;
     }
 
