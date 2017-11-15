@@ -101,7 +101,7 @@ namespace loudness{
         }
         
         //generate the normalised window functions
-		unsigned int winTotalElements = 0;
+		winTotalElements = 0;
         for (int w = 0; w < nWindows_; w++)
         {
             window_[w].assign(length_[w],0.0);
